@@ -1,7 +1,7 @@
 from collections import Counter
 
 import discord
-
+from typing import Union
 from core import Context
 
 
@@ -55,3 +55,26 @@ async def do_removal(ctx: Context, limit, predicate, *, before=None, after=None)
         await ctx.send(f"Successfully removed {deleted} messages.", delete_after=10)
     else:
         await ctx.send(to_send, delete_after=10)
+
+
+
+
+async def mod_chan_perms(self, ctx, chan: discord.TextChannel, targ: Union[discord.Member, discord.Role], perm_val: bool, view_perm: bool):
+    overwrites = chan.overwrites_for(targ)
+    if overwrites is not None:
+        if view_perm:
+            if overwrites.view_channel == perm_val:
+                return await ctx.send(f"The channel {chan.mention} is already {'unhidden' if perm_val else 'hidden'} for {targ.mention if isinstance(targ, Member) else targ.name}.")
+            overwrites.view_channel = perm_val
+        else:
+            if overwrites.send_messages == perm_val:
+                return await ctx.send(f"The channel {chan.mention} is already {'unlocked' if perm_val else 'locked'} for {targ.mention if isinstance(targ, Member) else targ.name}.")
+            overwrites.send_messages = perm_val
+    else:
+        overwrites = chan.overwrites_for(ctx.guild.default_role)
+        if view_perm:
+            overwrites.view_channel = perm_val
+        else:
+            overwrites.send_messages = perm_val
+    await chan.set_permissions(targ, overwrite=overwrites, reason=f"Action done by {ctx.author} | ({ctx.author.id})")
+    await ctx.send(f"The channel {chan.mention} is {'🔓 unlocked' if perm_val else '🔒 locked'} for {targ.mention if isinstance(targ, Member) else targ.name}." if not view_perm else f"The channel {chan.mention} is now {'unhidden' if perm_val else 'hidden'} for {targ.mention if isinstance(targ, Member) else targ.name}.")

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 import re
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, app_commands
 
 from constants import LockType
 from core import Cog, Context, QuotientView, role_command_check
@@ -16,7 +16,7 @@ from models import Lockdown
 from utils import ActionReason, BannedMember, FutureTime, MemberID, QuoUser, emote, human_timedelta, plural
 
 from .events import *
-from .utils import _complex_cleanup_strategy, _self_clean_system, do_removal
+from .utils import _complex_cleanup_strategy, _self_clean_system, do_removal, mod_chan_perms
 from .views import *
 
 
@@ -734,6 +734,7 @@ class Mod(Cog):
         await Lockdown.filter(type=LockType.maintenance, guild_id=ctx.guild.id, role_id=role.id).delete()
 
         tc = discord.utils.get(ctx.guild.channels, name="maintenance-chat")
+        
         vc = discord.utils.get(ctx.guild.channels, name="maintenance-vc")
 
         if tc and vc:
@@ -745,6 +746,44 @@ class Mod(Cog):
             else:
                 await ctx.success(f"OK!")
 
+
+
+
+    @commands.hybrid_command(name='lock', help="Lock a channel for a specific member or role.")
+    @app_commands.describe(chan="Select a channel to lock.",targ="Select a target for role or member to lock.")
+    @commands.has_permissions(manage_roles=True)
+    @commands.bot_has_guild_permissions(manage_channels=True, manage_roles=True)
+    async def lock_chan(self, ctx, chan: Optional[discord.TextChannel] = None, targ: Optional[Union[discord.Member, discord.Role]] = None):
+        chan = chan or ctx.channel
+        targ = targ or ctx.guild.default_role
+        await mod_chan_perms(ctx, chan, targ, False, False)
+
+    @commands.hybrid_command(name='cunlock', help="Unlock a channel for a specific member or role.")
+    @app_commands.describe(chan="Select a channel to unlock.",targ="Select a target for role or member to unlock.")
+    @commands.has_permissions(manage_roles=True)
+    @commands.bot_has_guild_permissions(manage_channels=True, manage_roles=True)
+    async def unlock_chan(self, ctx, chan: Optional[discord.TextChannel] = None, targ: Optional[Union[discord.Member, discord.Role]] = None):
+        chan = chan or ctx.channel
+        targ = targ or ctx.guild.default_role
+        await mod_chan_perms(ctx, chan, targ, True, False)
+
+    @commands.hybrid_command(name='hide', help="Hide a channel for a specific member or role.")
+    @app_commands.describe(chan="Select a channel to hide",targ="Select a target for role or member to hide.")
+    @commands.has_permissions(manage_channels=True)
+    @commands.bot_has_guild_permissions(manage_channels=True, manage_roles=True)
+    async def hide_chan(self, ctx, chan: Optional[discord.TextChannel] = None, targ: Optional[Union[discord.Member, discord.Role]] = None):
+        chan = chan or ctx.channel
+        targ = targ or ctx.guild.default_role
+        await mod_chan_perms(ctx, chan, targ, False, True)
+
+    @commands.hybrid_command(name='unhide', help="Unhide a channel for a specific member or role.")
+    @app_commands.describe(chan="Select a channel to unhide",targ="Select a target for role or member to unhide.")
+    @commands.has_permissions(manage_channels=True)
+    @commands.bot_has_guild_permissions(manage_channels=True, manage_roles=True)
+    async def unhide_chan(self, ctx, chan: Optional[discord.TextChannel] = None, targ: Optional[Union[discord.Member, discord.Role]] = None):
+        chan = chan or ctx.channel
+        targ = targ or ctx.guild.default_role
+        await mod_chan_perms(ctx, chan, targ, True, True)
 
 async def setup(bot: Quotient) -> None:
     await bot.add_cog(Mod(bot))
